@@ -5,7 +5,7 @@
 # Overlay draws no text to avoid OCR feedback loops. Green answer is shown in the header.
 #
 # deps: pyqt6 pillow pytesseract openai python-dotenv
-
+# version 0.0.1
 import os, sys, time, threading, shutil
 from pathlib import Path
 from dataclasses import dataclass
@@ -37,7 +37,8 @@ from openai import OpenAI
 client = OpenAI()
 MODEL = os.getenv("READNWRITE_MODEL", "gpt-4o")
 
-PANE_COLOR = QColor(212, 175, 55, 230)
+DEFAULT_PANE_COLOR = QColor(212, 175, 55, 230)
+PANE_COLOR = QColor(DEFAULT_PANE_COLOR)
 
 # ================== helpers ==================
 @dataclass
@@ -849,15 +850,27 @@ class SettingsWindow(QWidget):
         super().__init__()
         self.setWindowTitle("Settings")
         layout = QVBoxLayout(self)
-
-        lbl = QLabel("Adjust application preferences.")
+        #===VSettings bannerV===
+        lbl = QLabel("")
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
 
+        color_row = QHBoxLayout()
+        layout.addLayout(color_row)
+
+        self._color_indicator = QLabel()
+        self._color_indicator.setFixedSize(24, 24)
+        color_row.addWidget(self._color_indicator)
+
         self._color_btn = QPushButton("Choose Pane Color")
-        layout.addWidget(self._color_btn)
-        self._update_color_btn()
+        color_row.addWidget(self._color_btn)
+
+        self._reset_btn = QPushButton("Reset to Default")
+        color_row.addWidget(self._reset_btn)
+
+        self._update_color_display()
         self._color_btn.clicked.connect(self._choose_color)
+        self._reset_btn.clicked.connect(self._reset_color)
 
         back_btn = QPushButton("Back")
         layout.addWidget(back_btn, 0, Qt.AlignmentFlag.AlignRight)
@@ -866,15 +879,22 @@ class SettingsWindow(QWidget):
         self._return_widget = None
         back_btn.clicked.connect(self._go_back)
 
-    def _update_color_btn(self):
-        self._color_btn.setStyleSheet(f"background-color: {PANE_COLOR.name()};")
+    def _update_color_display(self):
+        self._color_indicator.setStyleSheet(
+            f"border-radius: 12px; background-color: {PANE_COLOR.name()};"
+        )
 
     def _choose_color(self):
         global PANE_COLOR
         color = QColorDialog.getColor(PANE_COLOR, self, "Select Pane Color")
         if color.isValid():
             PANE_COLOR = QColor(color.red(), color.green(), color.blue(), 230)
-            self._update_color_btn()
+            self._update_color_display()
+
+    def _reset_color(self):
+        global PANE_COLOR
+        PANE_COLOR = QColor(DEFAULT_PANE_COLOR)
+        self._update_color_display()
 
     def _go_back(self):
         if self._return_factory:
