@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject, QSize, 
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen, QGuiApplication, QImage, QRegion
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QSpacerItem, QSizePolicy
+    QMessageBox, QSpacerItem, QSizePolicy, QPushButton
 )
 
 # ---------- Tesseract path
@@ -742,6 +742,48 @@ class HeaderWindow(QWidget):
         self.set_status("adjusted 📏")
 
 
+# ================== Welcome window ==================
+class WelcomeWindow(QWidget):
+    """Initial window presenting a friendly welcome and basic instructions."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Mirror Mirror")
+        layout = QVBoxLayout(self)
+
+        msg = (
+            "Welcome to Mirror Mirror!\n\n"
+            "This app watches a portion of your screen, uses OCR and OpenAI to read it, "
+            "and shows a helpful answer in the green header."
+            "\n"
+            "\n"
+            "Once you hit start a gold pane will appear; Allowing you to scan what is within the pane,"
+            "scan for text, then send that to ChatGPT."
+            "ChatGPT will then respond with an answer."
+        )
+        lbl = QLabel(msg)
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        btn_row = QHBoxLayout()
+        layout.addLayout(btn_row)
+
+        start_btn = QPushButton("Start")
+        quit_btn = QPushButton("Quit")
+        btn_row.addStretch(1)
+        btn_row.addWidget(start_btn)
+        btn_row.addWidget(quit_btn)
+
+        start_btn.clicked.connect(self._launch)
+        quit_btn.clicked.connect(QApplication.instance().quit)
+
+        self._main = None
+
+    def _launch(self):
+        """Close welcome window and show the main HeaderWindow."""
+        self._main = HeaderWindow()
+        self._main.show()
+        self.close()
 # ================== main ==================
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
@@ -750,6 +792,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     app = QApplication(sys.argv)
-    w = HeaderWindow()
+    w = WelcomeWindow()
     w.show()
     sys.exit(app.exec())
