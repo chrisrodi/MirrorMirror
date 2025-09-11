@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject, QSize, 
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen, QGuiApplication, QImage, QRegion
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QPushButton,
-    QMessageBox, QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect
+    QMessageBox, QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect, QColorDialog
 )
 
 # ---------- Tesseract path
@@ -37,6 +37,7 @@ from openai import OpenAI
 client = OpenAI()
 MODEL = os.getenv("READNWRITE_MODEL", "gpt-4o")
 
+PANE_COLOR = QColor(212, 175, 55, 230)
 
 # ================== helpers ==================
 @dataclass
@@ -189,7 +190,9 @@ class GlassPane(QWidget):
             band.setObjectName(f"move_{side}")
             band.setCursor(Qt.CursorShape.SizeAllCursor)
             band.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-            band.setStyleSheet("background: rgba(212,175,55,0.12);")
+            band.setStyleSheet(
+                f"background: rgba({PANE_COLOR.red()},{PANE_COLOR.green()},{PANE_COLOR.blue()},0.12);"
+            )
             band.mousePressEvent = self._band_press
             band.mouseMoveEvent  = self._band_move
             band.mouseReleaseEvent = self._band_release
@@ -224,17 +227,18 @@ class GlassPane(QWidget):
             g.setObjectName(f"grip_{kind}")
             g.setCursor(cursor)
             g.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-            g.setStyleSheet("""
-                QWidget#grip_n, QWidget#grip_s, QWidget#grip_w, QWidget#grip_e,
-                QWidget#grip_nw, QWidget#grip_ne, QWidget#grip_sw, QWidget#grip_se {
+            g.setStyleSheet(
+                f"""
+                QWidget#grip_nw, QWidget#grip_ne, QWidget#grip_sw, QWidget#grip_se {{
                     background: transparent;
-                }
+                }}
                 QWidget#grip_n:hover, QWidget#grip_s:hover, QWidget#grip_w:hover, QWidget#grip_e:hover,
-                QWidget#grip_nw:hover, QWidget#grip_ne:hover, QWidget#grip_sw:hover, QWidget#grip_se:hover {
-                    background: rgba(212,175,55,0.20);
+                 QWidget#grip_nw:hover, QWidget#grip_ne:hover, QWidget#grip_sw:hover, QWidget#grip_se:hover {{
+                    background: rgba({PANE_COLOR.red()},{PANE_COLOR.green()},{PANE_COLOR.blue()},0.20);
                     border-radius: 6px;
-                }
-            """)
+               }}
+            """
+            )
             g.mousePressEvent = lambda e, k=kind: self._grip_press(e, k)
             g.mouseMoveEvent  = lambda e, k=kind: self._grip_move(e, k)
             g.mouseReleaseEvent = lambda e, k=kind: self._grip_release(e, k)
@@ -357,8 +361,7 @@ class GlassPane(QWidget):
             p.restore()
 
         # --- normal gold border ---
-        gold = QColor(212, 175, 55, 230)
-        p.setPen(QPen(gold, 4))
+        p.setPen(QPen(PANE_COLOR, 4))
         p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawRoundedRect(r, self._corner_radius, self._corner_radius)
 
@@ -847,9 +850,14 @@ class SettingsWindow(QWidget):
         self.setWindowTitle("Settings")
         layout = QVBoxLayout(self)
 
-        lbl = QLabel("Settings go here.")
+        lbl = QLabel("Adjust application preferences.")
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
+
+        self._color_btn = QPushButton("Choose Pane Color")
+        layout.addWidget(self._color_btn)
+        self._update_color_btn()
+        self._color_btn.clicked.connect(self._choose_color)
 
         back_btn = QPushButton("Back")
         layout.addWidget(back_btn, 0, Qt.AlignmentFlag.AlignRight)
@@ -858,12 +866,73 @@ class SettingsWindow(QWidget):
         self._return_widget = None
         back_btn.clicked.connect(self._go_back)
 
+    def _update_color_btn(self):
+        self._color_btn.setStyleSheet(f"background-color: {PANE_COLOR.name()};")
+
+    def _choose_color(self):
+        global PANE_COLOR
+        color = QColorDialog.getColor(PANE_COLOR, self, "Select Pane Color")
+        if color.isValid():
+            PANE_COLOR = QColor(color.red(), color.green(), color.blue(), 230)
+            self._update_color_btn()
+
     def _go_back(self):
         if self._return_factory:
             self._return_widget = self._return_factory()
             self._return_widget.show()
         self.close()
 
+
+# ================== Welcome window ==================
+class WelcomeWindow(QWidget):
+    """Initial window presenting a friendly welcome and basic instructions."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Mirror Mirror")
+        layout = QVBoxLayout(self)
+
+        msg = (
+            "Welcome to Mirror Mirror!\n\n"
+            "This app watches a portion of your screen, uses OCR and OpenAI to read it, "
+            "and shows a helpful answer in the green header."
+        )
+        lbl = QLabel(msg)
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        btn_row = QHBoxLayout()
+        layout.addLayout(btn_row)
+
+        start_btn = QPushButton("Start")
+        settings_btn = QPushButton("Settings")
+        quit_btn = QPushButton("Quit")
+        btn_row.addStretch(1)
+        btn_row.addWidget(start_btn)
+        btn_row.addWidget(settings_btn)
+        btn_row.addWidget(quit_btn)
+
+        start_btn.clicked.connect(self._launch)
+        settings_btn.clicked.connect(self._open_settings)
+        quit_btn.clicked.connect(QApplication.instance().quit)
+
+        self._main = None
+        self._settings = None
+
+    def _launch(self):
+        """Close welcome window and show the main HeaderWindow."""
+        self._main = HeaderWindow()
+        self._main.show()
+        self.close()
+
+    def _open_settings(self):
+        """Close welcome window and show settings."""
+        def reopen():
+            return WelcomeWindow()
+
+        self._settings = SettingsWindow(reopen)
+        self._settings.show()
+        self.close()
 
 # ================== Welcome window ==================
 class WelcomeWindow(QWidget):
