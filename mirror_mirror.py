@@ -17,8 +17,8 @@ load_dotenv(dotenv_path=dotenv_path)
 from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject, QSize, pyqtSlot
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen, QGuiApplication, QImage, QRegion
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout,
-    QMessageBox, QSpacerItem, QSizePolicy, QPushButton
+    QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QPushButton,
+    QMessageBox, QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect
 )
 
 # ---------- Tesseract path
@@ -593,31 +593,58 @@ class HeaderWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Mirror Mirror")
-        self.setStyleSheet("""
-               QWidget { background:#cfcfcf; }
-               QFrame#pill { background:#e9e9e9; border-radius:14px; }
-               QLabel#instr { color:#6a6a6a; font-size:16px; padding:8px 14px; }
-               QLabel#status { color:#7a7a7a; font-size:13px; padding:8px 10px; }
-           """)
+        self.setStyleSheet(
+            """
+               QWidget { background:#f4f4f6; }
+               QFrame#pill {
+                   background:#ffffff;
+                   border-radius:16px;
+                   border:1px solid #d0d0d0;
+               }
+               QLabel#instr {
+                   color:#333333;
+                   font-size:15px;
+                   padding:8px 14px;
+               }
+               QLabel#status {
+                   color:#555555;
+                   font-size:13px;
+                   padding:8px 10px;
+               }
+               QPushButton {
+                   background-color:#0078d4;
+                   color:white;
+                   border:none;
+                   border-radius:8px;
+                   padding:6px 12px;
+               }
+               QPushButton:hover { background-color:#005fa3; }
+               QPushButton:pressed { background-color:#004a82; }
+           """
+        )
 
         # --- header UI ---
         outer = QVBoxLayout(self);
         L, T, R, B = self.OUTER_MARGINS
         outer.setContentsMargins(L, T, R, B);
         outer.setSpacing(10)
-        pill = QFrame();
+        pill = QFrame()
         pill.setObjectName("pill")
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(12)
+        shadow.setOffset(0, 2)
+        pill.setGraphicsEffect(shadow)
         pill_l = QHBoxLayout(pill);
         pill_l.setContentsMargins(14, 6, 14, 6)
         self.instr = QLabel("Drag anywhere inside the gold pane to move · Place over text for an answer.")
         self.instr.setObjectName("instr")
         spacer = QSpacerItem(20, 10, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        settings_btn = QPushButton("Settings")
+        pill_l.addWidget(settings_btn)
         self.status_lbl = QLabel("idle");
         self.status_lbl.setObjectName("status")
         pill_l.addWidget(self.instr);
         pill_l.addItem(spacer)
-        settings_btn = QPushButton("Settings")
-        pill_l.addWidget(settings_btn)
         pill_l.addWidget(self.status_lbl, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         settings_btn.clicked.connect(self._open_settings)
         outer.addWidget(pill, 0)
