@@ -616,7 +616,10 @@ class HeaderWindow(QWidget):
         self.status_lbl.setObjectName("status")
         pill_l.addWidget(self.instr);
         pill_l.addItem(spacer)
+        settings_btn = QPushButton("Settings")
+        pill_l.addWidget(settings_btn)
         pill_l.addWidget(self.status_lbl, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        settings_btn.clicked.connect(self._open_settings)
         outer.addWidget(pill, 0)
 
         # green ANSWER in header
@@ -639,6 +642,7 @@ class HeaderWindow(QWidget):
 
         self._glass = None
         self._engine = None
+        self._settings = None
 
         # ---------------------------
         # 1) Create GLASS first
@@ -718,6 +722,21 @@ class HeaderWindow(QWidget):
         if self._engine:
             self._engine.resume("▶️ resumed")
 
+    def _open_settings(self):
+        """Close header and show settings window."""
+        if self._engine:
+            self._engine.stop()
+        if self._glass:
+            self._glass.close()
+
+        def reopen():
+            w = HeaderWindow()
+            return w
+
+        self._settings = SettingsWindow(reopen)
+        self._settings.show()
+        self.close()
+
     # glass hooks
     def _on_glass_adjusting(self, is_adjusting: bool):
         if not self._engine: return
@@ -741,6 +760,83 @@ class HeaderWindow(QWidget):
         self._engine.set_bbox(bbox)
         self.set_status("adjusted 📏")
 
+# ================== Welcome window ==================
+class WelcomeWindow(QWidget):
+    """Initial window presenting a friendly welcome and basic instructions."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Mirror Mirror")
+        layout = QVBoxLayout(self)
+
+        msg = (
+            "Welcome to Mirror Mirror!\n\n"
+            "This app watches a portion of your screen, uses OCR and OpenAI to read it, "
+            "and shows a helpful answer in the green header."
+        )
+        lbl = QLabel(msg)
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        btn_row = QHBoxLayout()
+        layout.addLayout(btn_row)
+
+        start_btn = QPushButton("Start")
+        settings_btn = QPushButton("Settings")
+        quit_btn = QPushButton("Quit")
+        btn_row.addStretch(1)
+        btn_row.addWidget(start_btn)
+        btn_row.addWidget(settings_btn)
+        btn_row.addWidget(quit_btn)
+
+        start_btn.clicked.connect(self._launch)
+        settings_btn.clicked.connect(self._open_settings)
+        quit_btn.clicked.connect(QApplication.instance().quit)
+
+        self._main = None
+        self._settings = None
+
+    def _launch(self):
+        """Close welcome window and show the main HeaderWindow."""
+        self._main = HeaderWindow()
+        self._main.show()
+        self.close()
+
+    def _open_settings(self):
+        """Close welcome window and show settings."""
+        def reopen():
+            return WelcomeWindow()
+
+        self._settings = SettingsWindow(reopen)
+        self._settings.show()
+        self.close()
+
+# ================== Settings window ==================
+class SettingsWindow(QWidget):
+    """Simple window for adjusting application settings."""
+
+    def __init__(self, return_factory=None):
+        super().__init__()
+        self.setWindowTitle("Settings")
+        layout = QVBoxLayout(self)
+
+        lbl = QLabel("Settings go here.")
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        back_btn = QPushButton("Back")
+        layout.addWidget(back_btn, 0, Qt.AlignmentFlag.AlignRight)
+
+        self._return_factory = return_factory
+        self._return_widget = None
+        back_btn.clicked.connect(self._go_back)
+
+    def _go_back(self):
+        if self._return_factory:
+            self._return_widget = self._return_factory()
+            self._return_widget.show()
+        self.close()
+
 
 # ================== Welcome window ==================
 class WelcomeWindow(QWidget):
@@ -755,11 +851,6 @@ class WelcomeWindow(QWidget):
             "Welcome to Mirror Mirror!\n\n"
             "This app watches a portion of your screen, uses OCR and OpenAI to read it, "
             "and shows a helpful answer in the green header."
-            "\n"
-            "\n"
-            "Once you hit start a gold pane will appear; Allowing you to scan what is within the pane,"
-            "scan for text, then send that to ChatGPT."
-            "ChatGPT will then respond with an answer."
         )
         lbl = QLabel(msg)
         lbl.setWordWrap(True)
@@ -769,21 +860,35 @@ class WelcomeWindow(QWidget):
         layout.addLayout(btn_row)
 
         start_btn = QPushButton("Start")
+        settings_btn = QPushButton("Settings")
         quit_btn = QPushButton("Quit")
         btn_row.addStretch(1)
         btn_row.addWidget(start_btn)
+        btn_row.addWidget(settings_btn)
         btn_row.addWidget(quit_btn)
 
         start_btn.clicked.connect(self._launch)
+        settings_btn.clicked.connect(self._open_settings)
         quit_btn.clicked.connect(QApplication.instance().quit)
 
         self._main = None
+        self._settings = None
 
     def _launch(self):
         """Close welcome window and show the main HeaderWindow."""
         self._main = HeaderWindow()
         self._main.show()
         self.close()
+
+    def _open_settings(self):
+        """Close welcome window and show settings."""
+        def reopen():
+            return WelcomeWindow()
+
+        self._settings = SettingsWindow(reopen)
+        self._settings.show()
+        self.close()
+
 # ================== main ==================
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
