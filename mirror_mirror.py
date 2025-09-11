@@ -5,7 +5,7 @@
 # Overlay draws no text to avoid OCR feedback loops. Green answer is shown in the header.
 #
 # deps: pyqt6 pillow pytesseract openai python-dotenv
-# version a0.0.0
+# version b0.0.0
 import os, sys, time, threading, shutil
 from pathlib import Path
 from dataclasses import dataclass
