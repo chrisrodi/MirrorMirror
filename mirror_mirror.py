@@ -17,11 +17,12 @@ load_dotenv(dotenv_path=dotenv_path)
 from PyQt6.QtCore import Qt, QRect, QPoint, QTimer, pyqtSignal, QObject, QSize, pyqtSlot
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen, QGuiApplication, QImage, QRegion
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QPushButton,
-    QMessageBox, QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect, QColorDialog
+    QMessageBox, QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect, QColorDialog,
+    QCheckBox, QWidget, QApplication, QWidget, QLabel, QFrame, QVBoxLayout, QHBoxLayout, QPushButton
 )
-
 # ---------- Tesseract path
+
+
 import pytesseract
 from PIL import Image, ImageOps, ImageFilter
 if os.path.exists("/opt/homebrew/bin/tesseract"):
@@ -39,6 +40,8 @@ MODEL = os.getenv("READNWRITE_MODEL", "gpt-4o")
 
 DEFAULT_PANE_COLOR = QColor(212, 175, 55, 230)
 PANE_COLOR = QColor(DEFAULT_PANE_COLOR)
+
+SHOW_DEBUG_STATUS = False
 
 # ================== helpers ==================
 @dataclass
@@ -668,7 +671,8 @@ class HeaderWindow(QWidget):
         pill_l.addWidget(settings_btn)
         self.status_lbl = QLabel("idle");
         self.status_lbl.setObjectName("status")
-        pill_l.addWidget(self.instr);
+        pill_l.addWidget(self.instr)
+        self.status_lbl.setVisible(SHOW_DEBUG_STATUS)
         pill_l.addItem(spacer)
         pill_l.addWidget(self.status_lbl, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         settings_btn.clicked.connect(self._open_settings)
@@ -744,7 +748,11 @@ class HeaderWindow(QWidget):
 
     def set_status(self, msg: str):
         if self.status_lbl:
-            self.status_lbl.setText(msg or "")
+            if SHOW_DEBUG_STATUS:
+                self.status_lbl.setText(msg or "")
+                self.status_lbl.show()
+            else:
+                self.status_lbl.hide()
 
     def _on_answer(self, black: str, green: str):
         # Glass remains textless; header shows the answer in green
@@ -894,6 +902,10 @@ class SettingsWindow(QWidget):
         self._color_btn.clicked.connect(self._choose_color)
         self._reset_btn.clicked.connect(self._reset_color)
 
+        self._debug_chk = QCheckBox("Show debug status in header")
+        self._debug_chk.setChecked(SHOW_DEBUG_STATUS)
+        layout.addWidget(self._debug_chk)
+        self._debug_chk.toggled.connect(self._toggle_debug)
         back_btn = QPushButton("Back")
         layout.addWidget(back_btn, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -917,6 +929,10 @@ class SettingsWindow(QWidget):
         global PANE_COLOR
         PANE_COLOR = QColor(DEFAULT_PANE_COLOR)
         self._update_color_display()
+
+    def _toggle_debug(self, checked: bool):
+        global SHOW_DEBUG_STATUS
+        SHOW_DEBUG_STATUS = checked
 
     def _go_back(self):
         if self._return_factory:
