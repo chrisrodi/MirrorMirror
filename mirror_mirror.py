@@ -465,10 +465,10 @@ class Engine(QObject):
     def set_bbox(self, bbox: CaptureRect):
         self._req_set_bbox.emit(bbox)
 
-        def capture_now(self):
-            """Trigger an immediate capture/OCR cycle if idle."""
-            if not self._busy and not self._paused:
-                self._tick()
+    def capture_now(self):
+        """Trigger an immediate capture/OCR cycle if idle."""
+        if not self._busy and not self._paused:
+            self._tick()
 
     def set_interval_ms(self, ms: int):
         self._req_set_interval.emit(ms)
