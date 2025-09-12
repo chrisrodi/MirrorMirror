@@ -59,6 +59,7 @@ def pil_from_qimage(qimg: QImage) -> Image.Image:
 class GlassPane(QWidget):
     """Gold-framed, draggable/resizable overlay.
        - Drag from center or any border to move
+       - Single-click near center to trigger an immediate OCR capture
        - Resize via large corners + edge strips
        - Blocks clicks (no click-through)
        - Center is painted with alpha=1 so macOS hit-tests it
@@ -69,10 +70,12 @@ class GlassPane(QWidget):
     MIN_W  = 1
     MIN_H  = 1
     HIT_ALPHA = 1  # barely visible fill so the center is hit-testable
+    OCR_CLICK_RADIUS = 40  # px radius around center that counts as "click" for OCR
 
     adjusting = pyqtSignal(bool)
     geometry_changed = pyqtSignal(QRect)
     pauseRequested = pyqtSignal(bool)  # True=start drag -> pause, False=end drag -> resume (debounced by header)
+    ocrRequested = pyqtSignal()
 
     def __init__(self, geo: QRect, corner_radius: int = 22):
         super().__init__(
@@ -107,6 +110,8 @@ class GlassPane(QWidget):
         # drag bookkeeping
         self._drag_origin = None
         self._press_global = QPoint()
+        self._press_pos = QPoint()
+        self._dragging = False  # track if a move actually happened
 
         # grip state
         self._grip_active = None
@@ -166,22 +171,33 @@ class GlassPane(QWidget):
         if e.button() == Qt.MouseButton.LeftButton:
             self._drag_origin = self.geometry()
             self._press_global = e.globalPosition().toPoint()
-            self._begin_adjusting()
-            self.pauseRequested.emit(True)  # << pause now
+            self._press_pos = e.position().toPoint()
+            self._dragging = False  # reset; decide on click vs drag on move
 
     def mouseMoveEvent(self, e):
         if e.buttons() & Qt.MouseButton.LeftButton and self._drag_origin is not None:
-            self._begin_adjusting()  # ensure we pause even if press was missed
+            if not self._dragging:
+                self._dragging = True
+                self._begin_adjusting()
+                self.pauseRequested.emit(True)  # << pause now # ensure we pause even if press was missed
             delta = e.globalPosition().toPoint() - self._press_global
             self.setGeometry(self._drag_origin.translated(delta))
             self.geometry_changed.emit(self.geometry())
 
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton:
-            self._drag_origin = None
-            self._end_adjusting()
-            self.geometry_changed.emit(self.geometry())
-            self.pauseRequested.emit(False)  # << allow resume (header debounces)
+            if self._dragging:
+                self._drag_origin = None
+                self._dragging = False
+                self._end_adjusting()
+                self.geometry_changed.emit(self.geometry())
+                self.pauseRequested.emit(False)  # << allow resume (header debounces)
+            else:
+                self._drag_origin = None
+                center = self.rect().center()
+                if (self._press_pos - center).manhattanLength() <= self.OCR_CLICK_RADIUS:
+                    self.ocrRequested.emit()
+            self._press_pos = QPoint()
 
     # ---------- perimeter move bands ----------
     def _make_perimeter_bands(self):
@@ -449,6 +465,11 @@ class Engine(QObject):
     def set_bbox(self, bbox: CaptureRect):
         self._req_set_bbox.emit(bbox)
 
+        def capture_now(self):
+            """Trigger an immediate capture/OCR cycle if idle."""
+            if not self._busy and not self._paused:
+                self._tick()
+
     def set_interval_ms(self, ms: int):
         self._req_set_interval.emit(ms)
 
@@ -704,6 +725,7 @@ class HeaderWindow(QWidget):
         self._glass.pauseRequested.connect(self._on_pause_request, type=Qt.ConnectionType.QueuedConnection)
         self._glass.adjusting.connect(self._on_glass_adjusting, type=Qt.ConnectionType.QueuedConnection)
         self._glass.geometry_changed.connect(self._on_glass_geometry_changed, type=Qt.ConnectionType.QueuedConnection)
+        self._glass.ocrRequested.connect(self._engine.capture_now, type=Qt.ConnectionType.QueuedConnection)
 
         # sync initial geometry and start
         self._glass.setGeometry(QRect(bbox.left, bbox.top, bbox.width, bbox.height))
