@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+
+# PyInstaller output
+build/
+dist/
+
+# editor / OS
+.idea/
+.DS_Store
+
+# release artifacts
+release/
+assets/icon.iconset/
