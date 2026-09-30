@@ -1,11 +1,13 @@
 # secrets
 .env
 .env.*
+!.env.example
 
 # python
 __pycache__/
 *.pyc
-.venv/
+.venv
+.venv*/
 
 
 # PyInstaller output
@@ -19,3 +21,7 @@ dist/
 # release artifacts
 release/
 assets/icon.iconset/
+*.dmg
+
+# local tooling
+.claude/
