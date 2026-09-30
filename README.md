@@ -19,3 +19,7 @@ On first launch you'll be asked for an OpenAI API key (or copy `.env.example` to
 ```
 
 Outputs `release/MirrorMirror-<version>.dmg`. Run `./build_release.sh --help` for signing and notarization options.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The built app bundles [PyQt6](https://www.riverbankcomputing.com/software/pyqt/), which is licensed under GPL v3.
