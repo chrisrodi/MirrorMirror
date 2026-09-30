@@ -13,7 +13,7 @@ python3 -m venv .venv
 .venv/bin/python mirror_mirror.py
 ```
 
-On first launch you'll be asked for an OpenAI API key (or copy `.env.example` to `.env` and fill it in). macOS will ask for Screen Recording permission.
+On first launch you'll be asked for an OpenAI API key, macOS will then ask for Screen Recording permission. Give permission and restart the app.
 
 ## Build a DMG
 
@@ -21,7 +21,7 @@ On first launch you'll be asked for an OpenAI API key (or copy `.env.example` to
 ./build_release.sh
 ```
 
-Outputs `release/MirrorMirror-<version>.dmg`. Run `./build_release.sh --help` for signing and notarization options.
+Outputs `release/MirrorMirror-<version>.dmg`.
 
 ## License
 
